@@ -3,3 +3,12 @@ description: "login and push images to container registries"
 runs:
   using: "node16"
   main: "dist/index.js"
+inputs:
+  test-image:
+    description: Boolean value to set for test image push
+    required: false
+    default: "false"
+  test-image-name:
+    description: Temporary image name of the test image
+    required: false 
+    default: "testimagetempname"

@@ -141,9 +141,14 @@ async function acrLogin(cred) {
 }
 
 async function dockerPush(cred) {
-  const tempImage = process.env.DOCKER_TEMP_IMAGE;
+  const testImage = core.getInput("test-image");
+  let tempImage = process.env.DOCKER_TEMP_IMAGE;
   const registryUrl = cred.credentials.registry;
-  const newImageTag = `${registryUrl}/${choreoApp}:${process.env.NEW_SHA}`;
+  let newImageTag = `${registryUrl}/${choreoApp}:${process.env.NEW_SHA}`;
+  if (tempImage === "true") {
+    tempImage = core.getInput("test-image-name");
+    newImageTag = `${registryUrl}/userapptest/${choreoApp}:${process.env.NEW_SHA}`;
+  }
   // Pushing images to Registory
   var child = spawn(
     `docker image tag ${tempImage} ${newImageTag} && docker push ${newImageTag} && docker logout ${registryUrl}`,
@@ -171,29 +176,30 @@ async function dockerPush(cred) {
   return data;
 }
 
-
 async function setupGcpArtifactRegistry(cred) {
   const registryPassword = cred.credentials.registryPassword;
-  const keyContex = Buffer.from(registryPassword, 'base64').toString();
+  const keyContex = Buffer.from(registryPassword, "base64").toString();
   const region = cred.credentials.region;
   const registry = cred.credentials.registry;
   const repository = cred.credentials.repository;
-  const projectId = JSON.parse(keyContex)['project_id'];
+  const projectId = JSON.parse(keyContex)["project_id"];
   const newImageTag = `${region}-docker.pkg.dev/${projectId}/${repository}/${choreoApp}:${process.env.NEW_SHA}`;
-  const keyPath = 'gcp-key.json';
+  const keyPath = "gcp-key.json";
   // const shellScriptPath = './scripts/gcp-artifact-registry-push.sh';
   // fs.chmodSync(shellScriptPath, "755");
-  
-  fs.writeFileSync(keyPath, keyContex, 'utf-8');
-  var child = spawn(`
+
+  fs.writeFileSync(keyPath, keyContex, "utf-8");
+  var child = spawn(
+    `
     cat ${keyPath} | docker login -u _json_key --password-stdin ${registry} && \
     docker image tag ${process.env.DOCKER_TEMP_IMAGE}  ${newImageTag} && \
     docker push ${newImageTag} && \
     docker logout ${registry} && \
     rm -rf gcp-key.json`,
     {
-    shell: true
-  });
+      shell: true,
+    }
+  );
   var data = "";
   for await (const chunk of child.stdout) {
     console.log(chunk.toString());
